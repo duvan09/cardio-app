@@ -1,0 +1,60 @@
+/* Tu diseño original intacto */
+* {
+    box-sizing: border-box; /* Asegura que el padding no afecte el ancho total */
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f7f6;
+    display: flex;
+    justify-content: center;
+    padding: 50px;
+}
+
+.card {
+    background: white;
+    padding: 30px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    width: 400px;
+    text-align: center;
+}
+
+input, button {
+    width: 100%; /* Ajustado al 100% para que con box-sizing cuadre perfecto */
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background-color: #c0392b; /* Un toque de interactividad */
+}
+
+.stat-box {
+    background: #ecf0f1;
+    margin: 10px 0;
+    padding: 15px;
+    border-left: 5px solid #e74c3c;
+    border-radius: 4px;
+    text-align: left; /* Para que los resultados se lean mejor */
+}
+
+.lista-usuarios {
+    margin-top: 20px;
+    text-align: left;
+}
+
+.usuario-item a {
+    text-decoration: none;
+    color: #2980b9;
+}

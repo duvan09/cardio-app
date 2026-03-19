@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+    <title>Registro Cardio - FlexFit</title>
+</head>
+<body>
+    <div class="card">
+        <h1>❤️ Cardio App</h1>
+        <p>Generador de Frecuencia Cardíaca</p>
+        
+        <form action="{{ url_for('generar') }}" method="POST">
+            <input type="text" name="nombre" placeholder="Nombre del Paciente" required>
+            <button type="submit">GENERAR DATOS</button>
+        </form>
+
+        <hr>
+
+        <div class="lista-usuarios">
+            <h3>Pacientes Registrados:</h3>
+            {% if usuarios %}
+                {% for u in usuarios %}
+                    <div class="usuario-item">
+                        <p>👤 <a href="{{ url_for('detalle', id=u.id) }}">{{ u.nombre }}</a></p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No hay pacientes registrados aún.</p>
+            {% endif %}
+        </div>
+    </div>
+</body>
+</html>

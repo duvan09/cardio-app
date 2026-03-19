@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+    <title>Resultados de {{ usuario.nombre }} - Cardio App</title>
+</head>
+<body>
+    <div class="card">
+        <p class="stat-label">Resultados generados para:</p>
+        <h1>{{ usuario.nombre }}</h1>
+
+        <div class="stat-box">
+            <p><strong>💓 Ritmo en Reposo:</strong> {{ usuario.ritmo_reposo }} LPM</p>
+        </div>
+
+        <div class="stat-box" style="border-left-color: #2980b9;">
+            <p><strong>🏃 Ritmo en Ejercicio:</strong> {{ usuario.ritmo_ejercicio }} LPM</p>
+        </div>
+
+        <br>
+        <a href="{{ url_for('index') }}" style="color: #7f8c8d; text-decoration: none; font-weight: bold;">
+            ← Volver a registrar otro paciente
+        </a>
+    </div>
+</body>
+</html>
