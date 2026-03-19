@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify # Se agregó jsonify
 from bd.conexion import obtener_conexion 
 import random
 
 app = Flask(__name__)
+
+# --- TUS RUTAS ORIGINALES (SIN CAMBIOS) ---
 
 @app.route('/')
 def index():
@@ -15,7 +17,6 @@ def index():
         conn.close()
         return render_template('index.html', usuarios=usuarios)
     except Exception as e:
-        # Esto te ayudará a ver qué pasa si falla la conexión en la nube
         return f"Error de base de datos: {e}"
 
 @app.route('/generar', methods=['POST'])
@@ -51,6 +52,24 @@ def detalle(id):
     except Exception as e:
         return f"Error al cargar detalle: {e}"
 
-# AJUSTE PARA VERCEL: Sin debug=True para producción
+# --- NUEVA RUTA API PARA FLEXFIT (FORMATO JSON) ---
+
+@app.route('/api/datos')
+def api_datos():
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor(dictionary=True)
+        # Traemos todos los datos necesarios para FlexFit
+        cursor.execute("SELECT nombre, ritmo_reposo, ritmo_ejercicio FROM usuarios")
+        usuarios = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        
+        # Esto devuelve los datos en formato JSON puro
+        return jsonify(usuarios)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# AJUSTE PARA VERCEL
 if __name__ == '__main__':
     app.run()
