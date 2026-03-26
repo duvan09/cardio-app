@@ -22,7 +22,7 @@ def index():
 
 # Cirugía CQR 2: Función puente para telemetría hacia FlexFit
 def sincronizar_flexfit(min_fc, max_fc):
-    url = "https://tu-dominio-flexfit.com/php_logic/telemetria_be.php"
+    url = "https://flexfit-tm.infinityfreeapp.com/php_logic/telemetria_be.php"
     payload = {"fc_min": min_fc, "fc_max": max_fc}
     try:
         requests.post(url, json=payload, timeout=5)
