@@ -1,7 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify # Se agregó jsonify
 from bd.conexion import obtener_conexion 
 import random
-import requests # Cirugía CQR 1: Importación de la librería
 
 app = Flask(__name__)
 
@@ -20,15 +19,6 @@ def index():
     except Exception as e:
         return f"Error de base de datos: {e}"
 
-# Cirugía CQR 2: Función puente para telemetría hacia FlexFit
-def sincronizar_flexfit(min_fc, max_fc):
-    url = "https://flexfit-tm.infinityfreeapp.com/php_logic/telemetria_be.php"
-    payload = {"fc_min": min_fc, "fc_max": max_fc}
-    try:
-        requests.post(url, json=payload, timeout=5)
-    except Exception as e:
-        print(f"Fallo en enlace: {e}")
-
 @app.route('/generar', methods=['POST'])
 def generar():
     try:
@@ -44,9 +34,6 @@ def generar():
         conn.commit()
         cursor.close()
         conn.close()
-        
-        # Cirugía CQR 3: Disparo de telemetría antes del redireccionamiento
-        sincronizar_flexfit(reposo, ejercicio)
         
         return redirect(url_for('detalle', id=nuevo_id))
     except Exception as e:
@@ -82,6 +69,49 @@ def api_datos():
         return jsonify(usuarios)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+# --- CIRUGÍA CQR: RUTA DE TELEMETRÍA DIRECTA PARA FLEXFIT ---
+@app.route('/api/solicitar_telemetria', methods=['POST', 'OPTIONS'])
+def solicitar_telemetria():
+    # Manejo religioso de CORS para permitir que tu JS se conecte desde InfinityFree
+    if request.method == 'OPTIONS':
+        response = app.make_default_options_response()
+        headers = request.headers.get('Access-Control-Request-Headers', '*')
+        response.headers['Access-Control-Allow-Origin'] = '*'
+        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+        response.headers['Access-Control-Allow-Headers'] = headers
+        return response
+
+    try:
+        data = request.get_json()
+        nombre_usuario = data.get('nombre', 'Usuario_FlexFit') # Captura el nombre enviado por JS
+        
+        reposo = random.randint(60, 85)
+        ejercicio = random.randint(125, 175)
+
+        # Guardamos en la BD de Cardio App para mantener el registro
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        sql = "INSERT INTO usuarios (nombre, ritmo_reposo, ritmo_ejercicio) VALUES (%s, %s, %s)"
+        cursor.execute(sql, (nombre_usuario, reposo, ejercicio))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        # Devolvemos los datos directamente al JS de FlexFit
+        resp = jsonify({
+            "status": "success", 
+            "min": reposo, 
+            "max": ejercicio,
+            "mensaje": "Telemetría generada y guardada"
+        })
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp
+
+    except Exception as e:
+        resp = jsonify({"status": "error", "error": str(e)})
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        return resp, 500
 
 # AJUSTE PARA VERCEL
 if __name__ == '__main__':
