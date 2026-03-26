@@ -74,47 +74,53 @@ def api_datos():
 # --- CIRUGÍA CQR: RUTA DE TELEMETRÍA DIRECTA CON HEADERS DE SEGURIDAD ---
 @app.route('/api/solicitar_telemetria', methods=['POST', 'OPTIONS'])
 def solicitar_telemetria():
-    # 1. Manejo del Preflight (OPTIONS)
+    # ORIGEN EXACTO DE TU PROYECTO
+    origen = "http://flexfit-tm.infinityfreeapp.com"
+    
+    # --- RESPUESTA RÁPIDA PARA PREFLIGHT (OPTIONS) ---
     if request.method == 'OPTIONS':
         response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", ORIGEN_PERMITIDO)
-        response.headers.add('Access-Control-Allow-Headers', "Content-Type, Authorization")
-        response.headers.add('Access-Control-Allow-Methods', "POST, OPTIONS")
-        response.headers.add('Access-Control-Allow-Credentials', "true")
-        return response
+        response.headers.add("Access-Control-Allow-Origin", origen)
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Credentials", "true")
+        return response, 204
 
-    # 2. Lógica de Negocio (POST)
+    # --- LÓGICA DE NEGOCIO ---
     try:
-        data = request.get_json()
-        nombre_usuario = data.get('nombre', 'Usuario_FlexFit') if data else 'Usuario_FlexFit'
+        data = request.get_json(silent=True) or {}
+        nombre_usuario = data.get('nombre', 'Usuario_FlexFit')
         
         reposo = random.randint(60, 85)
         ejercicio = random.randint(125, 175)
 
-        # Registro en base de datos sistema_cardio
-        conn = obtener_conexion()
-        cursor = conn.cursor()
-        sql = "INSERT INTO usuarios (nombre, ritmo_reposo, ritmo_ejercicio) VALUES (%s, %s, %s)"
-        cursor.execute(sql, (nombre_usuario, reposo, ejercicio))
-        conn.commit()
-        cursor.close()
-        conn.close()
+        # Intento de guardado en BD
+        try:
+            conn = obtener_conexion()
+            cursor = conn.cursor()
+            sql = "INSERT INTO usuarios (nombre, ritmo_reposo, ritmo_ejercicio) VALUES (%s, %s, %s)"
+            cursor.execute(sql, (nombre_usuario, reposo, ejercicio))
+            conn.commit()
+            cursor.close()
+            conn.close()
+        except Exception as db_error:
+            print(f"Error BD (ignorado para no bloquear telemetría): {db_error}")
 
-        # Respuesta exitosa con Headers CQR
-        resp = jsonify({
+        # Construir respuesta exitosa
+        res = jsonify({
             "status": "success", 
             "min": reposo, 
-            "max": ejercicio,
-            "mensaje": "Telemetría generada y guardada"
+            "max": ejercicio
         })
-        resp.headers.add('Access-Control-Allow-Origin', ORIGEN_PERMITIDO)
-        resp.headers.add('Access-Control-Allow-Credentials', "true")
-        return resp
-
+        
     except Exception as e:
-        resp = jsonify({"status": "error", "error": str(e)})
-        resp.headers.add('Access-Control-Allow-Origin', ORIGEN_PERMITIDO)
-        return resp, 500
+        res = jsonify({"status": "error", "message": str(e)})
+
+    # APLICAR HEADERS A LA RESPUESTA FINAL (SEA ERROR O ÉXITO)
+    res.headers.add("Access-Control-Allow-Origin", origen)
+    res.headers.add("Access-Control-Allow-Credentials", "true")
+    return res
+
 
 if __name__ == '__main__':
     app.run()
