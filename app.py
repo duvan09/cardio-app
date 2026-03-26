@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify # Se agregó jsonify
+from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response # Cirugía CQR: Se agregó make_response
 from bd.conexion import obtener_conexion 
 import random
 
@@ -73,13 +73,12 @@ def api_datos():
 # --- CIRUGÍA CQR: RUTA DE TELEMETRÍA DIRECTA PARA FLEXFIT ---
 @app.route('/api/solicitar_telemetria', methods=['POST', 'OPTIONS'])
 def solicitar_telemetria():
-    # Manejo religioso de CORS para permitir que tu JS se conecte desde InfinityFree
+    # Manejo religioso de CORS usando make_response()
     if request.method == 'OPTIONS':
-        response = app.make_default_options_response()
-        headers = request.headers.get('Access-Control-Request-Headers', '*')
-        response.headers['Access-Control-Allow-Origin'] = '*'
-        response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
-        response.headers['Access-Control-Allow-Headers'] = headers
+        response = make_response()
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
         return response
 
     try:
@@ -105,12 +104,12 @@ def solicitar_telemetria():
             "max": ejercicio,
             "mensaje": "Telemetría generada y guardada"
         })
-        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers.add('Access-Control-Allow-Origin', '*')
         return resp
 
     except Exception as e:
         resp = jsonify({"status": "error", "error": str(e)})
-        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers.add('Access-Control-Allow-Origin', '*')
         return resp, 500
 
 # AJUSTE PARA VERCEL
