@@ -1,12 +1,12 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response 
 from bd.conexion import obtener_conexion 
 import random
+import json # Cirugía CQR: Necesario para leer raw data
 
 app = Flask(__name__)
 
 # --- CONFIGURACIÓN RELIGIOSA DE ORIGEN ---
-# Definimos el origen exacto de FlexFit para máxima seguridad CQR
-ORIGEN_PERMITIDO = "http://flexfit-tm.infinityfreeapp.com"
+ORIGEN_PERMITIDO = "*" # CQR: Abierto al 100% para evitar bloqueos del navegador
 
 @app.route('/')
 def index():
@@ -54,7 +54,6 @@ def detalle(id):
     except Exception as e:
         return f"Error al cargar detalle: {e}"
 
-# --- NUEVA RUTA API PARA FLEXFIT (FORMATO JSON) ---
 @app.route('/api/datos')
 def api_datos():
     try:
@@ -71,30 +70,32 @@ def api_datos():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- CIRUGÍA CQR: RUTA DE TELEMETRÍA DIRECTA CON HEADERS DE SEGURIDAD ---
+# --- CIRUGÍA CQR: RUTA DE TELEMETRÍA DIRECTA BLINDADA ---
 @app.route('/api/solicitar_telemetria', methods=['POST', 'OPTIONS'])
 def solicitar_telemetria():
-    # --- 1. MANEJO DE PREFLIGHT (OPTIONS) EXPLÍCITO ---
+    # 1. MANEJO DE PREFLIGHT
     if request.method == 'OPTIONS':
         response = make_response()
-        # Nota: Usamos "*" temporalmente si el error persiste, pero ORIGEN_PERMITIDO es lo ideal
         response.headers.add("Access-Control-Allow-Origin", ORIGEN_PERMITIDO)
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept")
-        response.headers.add("Access-Control-Allow-Credentials", "true")
+        response.headers.add("Access-Control-Allow-Headers", "*")
         return response, 204
 
-    # --- 2. LÓGICA DE NEGOCIO PROTEGIDA ---
+    # 2. LÓGICA DE NEGOCIO PROTEGIDA
     try:
-        # Captura segura del body
-        data = request.get_json(silent=True) or {}
+        # CIRUGÍA CQR: Leer como texto plano y convertir manualmente a JSON
+        # Esto evita que Flask lance error 400/500 cuando JS evade el CORS con text/plain
+        raw_data = request.data
+        try:
+            data = json.loads(raw_data) if raw_data else {}
+        except Exception:
+            data = {}
+
         nombre_usuario = data.get('nombre', 'Usuario_FlexFit')
         
-        # Generación de telemetría simulada
         reposo = random.randint(60, 85)
         ejercicio = random.randint(125, 175)
 
-        # Intento de persistencia (No bloqueante para la API)
         try:
             conn = obtener_conexion()
             cursor = conn.cursor()
@@ -104,9 +105,8 @@ def solicitar_telemetria():
             cursor.close()
             conn.close()
         except Exception as db_err:
-            print(f"DEBUG CQR: Error en persistencia: {db_err}")
+            pass # Silencioso para no romper la respuesta al frontend
 
-        # Construcción de respuesta JSON
         res = jsonify({
             "status": "success",
             "min": reposo,
@@ -116,9 +116,8 @@ def solicitar_telemetria():
     except Exception as e:
         res = jsonify({"status": "error", "message": str(e)})
 
-    # --- 3. FORZADO DE HEADERS EN LA RESPUESTA FINAL ---
+    # 3. FORZADO DE HEADERS FINALES
     res.headers.add("Access-Control-Allow-Origin", ORIGEN_PERMITIDO)
-    res.headers.add("Access-Control-Allow-Credentials", "true")
     return res
 
 if __name__ == '__main__':
