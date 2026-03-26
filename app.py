@@ -74,27 +74,27 @@ def api_datos():
 # --- CIRUGÍA CQR: RUTA DE TELEMETRÍA DIRECTA CON HEADERS DE SEGURIDAD ---
 @app.route('/api/solicitar_telemetria', methods=['POST', 'OPTIONS'])
 def solicitar_telemetria():
-    # ORIGEN EXACTO DE TU PROYECTO
-    origen = "http://flexfit-tm.infinityfreeapp.com"
-    
-    # --- RESPUESTA RÁPIDA PARA PREFLIGHT (OPTIONS) ---
+    # --- 1. MANEJO DE PREFLIGHT (OPTIONS) EXPLÍCITO ---
     if request.method == 'OPTIONS':
         response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", origen)
+        # Nota: Usamos "*" temporalmente si el error persiste, pero ORIGEN_PERMITIDO es lo ideal
+        response.headers.add("Access-Control-Allow-Origin", ORIGEN_PERMITIDO)
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, Authorization, Accept")
         response.headers.add("Access-Control-Allow-Credentials", "true")
         return response, 204
 
-    # --- LÓGICA DE NEGOCIO ---
+    # --- 2. LÓGICA DE NEGOCIO PROTEGIDA ---
     try:
+        # Captura segura del body
         data = request.get_json(silent=True) or {}
         nombre_usuario = data.get('nombre', 'Usuario_FlexFit')
         
+        # Generación de telemetría simulada
         reposo = random.randint(60, 85)
         ejercicio = random.randint(125, 175)
 
-        # Intento de guardado en BD
+        # Intento de persistencia (No bloqueante para la API)
         try:
             conn = obtener_conexion()
             cursor = conn.cursor()
@@ -103,24 +103,23 @@ def solicitar_telemetria():
             conn.commit()
             cursor.close()
             conn.close()
-        except Exception as db_error:
-            print(f"Error BD (ignorado para no bloquear telemetría): {db_error}")
+        except Exception as db_err:
+            print(f"DEBUG CQR: Error en persistencia: {db_err}")
 
-        # Construir respuesta exitosa
+        # Construcción de respuesta JSON
         res = jsonify({
-            "status": "success", 
-            "min": reposo, 
+            "status": "success",
+            "min": reposo,
             "max": ejercicio
         })
         
     except Exception as e:
         res = jsonify({"status": "error", "message": str(e)})
 
-    # APLICAR HEADERS A LA RESPUESTA FINAL (SEA ERROR O ÉXITO)
-    res.headers.add("Access-Control-Allow-Origin", origen)
+    # --- 3. FORZADO DE HEADERS EN LA RESPUESTA FINAL ---
+    res.headers.add("Access-Control-Allow-Origin", ORIGEN_PERMITIDO)
     res.headers.add("Access-Control-Allow-Credentials", "true")
     return res
-
 
 if __name__ == '__main__':
     app.run()
