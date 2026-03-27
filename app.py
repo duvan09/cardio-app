@@ -1,12 +1,12 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, make_response 
+from flask import Flask, render_template, request, redirect, url_for, jsonify 
+from flask_cors import CORS # CIRUGÍA CQR: La solución definitiva para CORS
 from bd.conexion import obtener_conexion 
 import random
-import json # Cirugía CQR: Necesario para leer raw data
 
 app = Flask(__name__)
 
-# --- CONFIGURACIÓN RELIGIOSA DE ORIGEN ---
-ORIGEN_PERMITIDO = "*" # CQR: Abierto al 100% para evitar bloqueos del navegador
+# CIRUGÍA CQR: Permitir CORS automáticamente en todas las rutas /api/
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route('/')
 def index():
@@ -64,33 +64,15 @@ def api_datos():
         cursor.close()
         conn.close()
         
-        resp = jsonify(usuarios)
-        resp.headers.add('Access-Control-Allow-Origin', ORIGEN_PERMITIDO)
-        return resp
+        return jsonify(usuarios)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# --- CIRUGÍA CQR: RUTA DE TELEMETRÍA DIRECTA BLINDADA ---
-@app.route('/api/solicitar_telemetria', methods=['POST', 'OPTIONS'])
+# --- CIRUGÍA CQR: RUTA DE TELEMETRÍA (Limpia y protegida por CORS) ---
+@app.route('/api/solicitar_telemetria', methods=['POST'])
 def solicitar_telemetria():
-    # 1. MANEJO DE PREFLIGHT
-    if request.method == 'OPTIONS':
-        response = make_response()
-        response.headers.add("Access-Control-Allow-Origin", ORIGEN_PERMITIDO)
-        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "*")
-        return response, 204
-
-    # 2. LÓGICA DE NEGOCIO PROTEGIDA
     try:
-        # CIRUGÍA CQR: Leer como texto plano y convertir manualmente a JSON
-        # Esto evita que Flask lance error 400/500 cuando JS evade el CORS con text/plain
-        raw_data = request.data
-        try:
-            data = json.loads(raw_data) if raw_data else {}
-        except Exception:
-            data = {}
-
+        data = request.get_json(silent=True) or {}
         nombre_usuario = data.get('nombre', 'Usuario_FlexFit')
         
         reposo = random.randint(60, 85)
@@ -105,20 +87,16 @@ def solicitar_telemetria():
             cursor.close()
             conn.close()
         except Exception as db_err:
-            pass # Silencioso para no romper la respuesta al frontend
+            pass # Falla silenciosa de BD para no joder la interfaz de FlexFit
 
-        res = jsonify({
+        return jsonify({
             "status": "success",
             "min": reposo,
             "max": ejercicio
         })
         
     except Exception as e:
-        res = jsonify({"status": "error", "message": str(e)})
-
-    # 3. FORZADO DE HEADERS FINALES
-    res.headers.add("Access-Control-Allow-Origin", ORIGEN_PERMITIDO)
-    return res
+        return jsonify({"status": "error", "message": str(e)}), 500
 
 if __name__ == '__main__':
     app.run()
